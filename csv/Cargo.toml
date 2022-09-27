@@ -1,0 +1,16 @@
+[package]
+name = "csv"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+tokio = { version = "1", features = ["full"] }
+tokio-stream ={ version = "0.1", features = ["io-util"] }
+futures = "0.3"
+tracing = "0.1"
+tracing-futures = "0.2.5"
+serde = { version = "1.0.115", features = ["derive"] }
+csv-async = { version = "1.2", features = ["tokio"] }
+anyhow = "1.0"
