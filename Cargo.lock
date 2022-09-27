@@ -49,12 +49,22 @@ name = "cli"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "core",
  "csv",
  "csv-async",
  "futures",
+ "mem-store",
  "serde",
  "tokio",
  "tokio-stream",
+]
+
+[[package]]
+name = "core"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "tokio",
 ]
 
 [[package]]
@@ -62,6 +72,7 @@ name = "csv"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "core",
  "csv-async",
  "futures",
  "serde",
@@ -95,6 +106,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2b2466559f260f48ad25fe6317b3c8dac77b5bdb5763ac7d9d6103530663bc90"
 dependencies = [
  "memchr",
+]
+
+[[package]]
+name = "engine"
+version = "0.1.0"
+dependencies = [
+ "core",
+ "mem-store",
+ "tokio",
 ]
 
 [[package]]
@@ -233,6 +253,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "mem-store"
+version = "0.1.0"
+dependencies = [
+ "core",
+ "tokio",
+]
+
+[[package]]
 name = "memchr"
 version = "2.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -328,6 +356,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0a2ca2c61bc9f3d74d2886294ab7b9853abd9c1ad903a3ac7815c58989bb7bab"
 dependencies = [
  "unicode-ident",
+]
+
+[[package]]
+name = "publish"
+version = "0.1.0"
+dependencies = [
+ "core",
+ "engine",
+ "mem-store",
+ "tokio",
 ]
 
 [[package]]

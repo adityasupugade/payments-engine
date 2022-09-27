@@ -1,28 +1,25 @@
 mod process;
 
-use std::{env, path::PathBuf};
-use anyhow::Error;
-use tokio::fs::File;
+use std::{env, path::PathBuf, sync::Arc};
+use mem_store::mem_store::MemStore;
+use core::error::Error;
+use tokio::{fs::File, runtime::Runtime};
 use crate::process::process_transactions;
 
 fn main() -> Result<(), Error> {
     let args: Vec<String> = env::args().collect();
     println!("{:?}", args);
     
-    let rt = tokio::runtime::Builder::new_multi_thread()
-        .enable_all()
-        .worker_threads(2)
-        .max_blocking_threads(1)
-        .thread_name("syncer-rt")
-        .build()?;
-
+    let rt = core::infra::init_runtime(2, 1)?;
+    let rtc = rt.clone();
     let p = PathBuf::from("/home/aditya/transactions.csv");
-    rt.block_on(init(p))?;
+    rt.block_on(init(p, rtc))?;
     Ok(())
 }
 
-async fn init(path: PathBuf) -> Result<(), Error> {
+async fn init(path: PathBuf, rt: Arc<Runtime>) -> Result<(), Error> {
     let mut file = File::open(path).await?;
-    process_transactions(&mut file).await?;
+    let mut store = MemStore::default();
+    process_transactions(&mut file, &mut store, rt).await?;
     Ok(())
 }

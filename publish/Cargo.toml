@@ -1,0 +1,12 @@
+[package]
+name = "publish"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+core = { path = "../core" }
+mem-store = { path = "../mem-store" }
+engine = { path = "../engine" }
+tokio = { version = "1.10.0", features = ["full"] }
