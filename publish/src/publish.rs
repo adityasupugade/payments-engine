@@ -27,14 +27,17 @@ impl Publisher {
             None => {
                 let (tx, rx) = tokio::sync::mpsc::channel(10);
                 let worker = Engine::new(self.mem_store.clone()).start(self.rt.clone(), rx).await;
+                tx.send(transaction.clone()).await;
                 self.workers.lock().expect("").push(worker);
                 self.map.insert(transaction.client_id % self.worker_count, tx);
+                
             },
         }
         Ok(())
     }
 
-    pub async fn shutdown_gracefully(&self) -> Vec<Result<(), Error>> {
+    pub async fn shutdown_gracefully(&mut self) -> Vec<Result<(), Error>> {
+        self.map.clear();
         let mut results = Vec::new();
         for worker in self
             .workers
@@ -43,8 +46,12 @@ impl Publisher {
             .iter_mut()
         {
             match worker.await {
-                Ok(result) => results.push(Ok(())),
+                Ok(result) => {
+                    println!("{:?}", result);
+                    results.push(Ok(()))
+                },
                 Err(join_error) => {
+                    println!("{:?}", join_error);
                     // Err(Error::new(ErrorKind::Unknown("error".to_string())));
                 },
             }

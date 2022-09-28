@@ -9,3 +9,5 @@ edition = "2021"
 core = { path = "../core" }
 mem-store = { path = "../mem-store" }
 tokio = { version = "1.10.0", features = ["full"] }
+tracing = "0.1.25"
+tracing-futures = "0.2.5"

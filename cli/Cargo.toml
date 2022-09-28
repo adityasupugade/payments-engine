@@ -9,7 +9,7 @@ edition = "2021"
 csv = { path = "../csv" }
 mem-store = { path = "../mem-store" }
 core = { path = "../core" }
-anyhow = "1"
+publish = { path = "../publish" }
 tokio = { version = "1.10.0", features = ["full"] }
 serde = { version = "1.0.115", features = ["derive"] }
 csv-async = { version = "1.2", features = ["tokio"] }

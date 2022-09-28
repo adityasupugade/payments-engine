@@ -21,4 +21,21 @@ pub struct Transaction {
     pub id: u32,
     #[serde(default)]
     pub amount: Option<f32>,
+    #[serde(skip_serializing)]
+    pub under_dispute: bool,
+}
+
+impl Transaction {
+    pub fn is_valid_amount(&self) -> bool {
+        match self.amount {
+            Some(a) => {
+                if a < 0.0 {
+                    return false;
+                } else {
+                    return true;
+                }
+            },
+            None => return true,
+        }
+    }
 }

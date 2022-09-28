@@ -20,6 +20,6 @@ fn main() -> Result<(), Error> {
 async fn init(path: PathBuf, rt: Arc<Runtime>) -> Result<(), Error> {
     let mut file = File::open(path).await?;
     let mut store = MemStore::default();
-    process_transactions(&mut file, &mut store, rt).await?;
+    process_transactions(&mut file, store, rt).await?;
     Ok(())
 }
