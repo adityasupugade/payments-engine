@@ -48,6 +48,26 @@ impl MemStore {
         a
     }
 
+    pub async fn delete_transaction(&self, id: u32) -> Result<(), Error> {
+        // tracing::debug!("Deleting transaction: {:?}", id);
+        let mut result = self.transactions
+            .write().await;
+
+        result.remove(&id);
+        Ok(())
+    }
+
+    pub async fn set_transaction_under_dispute(&self, id: u32, under_dispute: bool) -> Result<(), Error> {
+        // tracing::debug!("Setting transaction {} under dispute to {}", id, under_dispute);
+        let mut result = self.transactions
+            .write().await;
+
+        if let Some(transaction) = result.get_mut(&id) {
+            transaction.set_under_dispute(under_dispute);
+        }
+        Ok(())
+    }
+
     pub async fn get_account(&self, id: u16) -> Result<Account, Error> {
         // tracing::debug!("Getting account: {}", id);
         let result = self
@@ -61,4 +81,19 @@ impl MemStore {
         }
     }
 
+    pub async fn update_account(&self, account: &Account) -> Result<(), Error> {
+        // tracing::debug!("Upserting account: {:?}", account);
+        // #[cfg(any(test, feature = "testing"))]
+        // {
+        //     if self.enable_upsert_account_failure() {
+        //         return Err(StoreError::AccessError("Test Error".to_string()));
+        //     }
+        // }
+        let mut result = self
+            .accounts
+            .write().await;
+
+        result.insert(account.client, account.clone());
+        Ok(())
+    }
 }

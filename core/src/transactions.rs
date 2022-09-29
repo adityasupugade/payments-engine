@@ -38,4 +38,8 @@ impl Transaction {
             None => return true,
         }
     }
+
+    pub fn set_under_dispute(&mut self, under_dispute: bool) {
+        self.under_dispute = under_dispute;
+    }
 }
