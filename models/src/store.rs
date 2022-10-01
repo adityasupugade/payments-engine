@@ -1,3 +1,5 @@
+use std::pin::Pin;
+
 use async_trait::async_trait;
 
 use crate::account::Account;
@@ -12,4 +14,5 @@ pub trait Store: Send + Sync {
     async fn set_transaction_under_dispute(&self, id: u32, under_dispute: bool) -> Result<(), Error>;
     async fn get_account(&self, id: u16) -> Result<Account, Error>;
     async fn update_account(&self, account: &Account) -> Result<(), Error>;
+    async fn get_all_accounts(&self) -> Result<Pin<Box<dyn futures::Stream<Item = Account> + Send>>, Error>;
 }

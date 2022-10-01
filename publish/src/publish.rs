@@ -1,5 +1,5 @@
-use models::{transactions::Transaction, error::{Error, ErrorKind}};
-use std::{collections::HashMap, sync::{Arc, Mutex}};
+use models::{transactions::Transaction, error::{Error, ErrorKind}, account::Account};
+use std::{collections::HashMap, sync::{Arc, Mutex}, pin::Pin};
 
 use engine::engine::Engine;
 use mem_store::mem_store::MemStore;
@@ -47,7 +47,7 @@ impl Publisher {
         {
             match worker.await {
                 Ok(result) => {
-                    println!("{:?}", result);
+                    // println!("{:?}", result);
                     results.push(Ok(()))
                 },
                 Err(join_error) => {
@@ -57,5 +57,10 @@ impl Publisher {
             }
         }
         return results;
+    }
+
+    pub async fn get_report(&mut self) -> Result<Pin<Box<dyn futures::Stream<Item = Account> + Send>>, Error> {
+        let engine = Engine::new(self.mem_store.clone());
+        engine.report().await
     }
 }

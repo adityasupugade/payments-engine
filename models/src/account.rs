@@ -19,4 +19,15 @@ impl Account {
             locked: false,
         }
     }
+
+    pub fn to_max_display_precision(&mut self) {
+        self.available = truncate(&self.available);
+        self.held = truncate(&self.held);
+        self.total = truncate(&self.total);
+    }
+}
+
+fn truncate(num: &f32) -> f32 {
+    let s = format!("{:.4}", num);
+    s.parse::<f32>().expect("truncate failed")
 }

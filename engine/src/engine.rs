@@ -1,5 +1,5 @@
 use models::{transactions::{Transaction, TransactionKind}, error::{Error, ErrorKind}, account::Account, store::Store};
-use std::sync::Arc;
+use std::{sync::Arc, pin::Pin};
 
 use tokio::{runtime::Runtime, sync::mpsc::Receiver};
 
@@ -20,6 +20,10 @@ where S: 'static+Send+Clone{
         rt.spawn(async move { let _ = Engine::process_txn(&e, rx).await; })
     }
 
+    pub async fn report(&self) -> Result<Pin<Box<dyn futures::Stream<Item = Account> + Send>>, Error> {
+        self.store.get_all_accounts().await
+    }
+
     async fn process_txn(&self, mut rx : Receiver<Transaction>) -> Result<(), Error> {
         while let Some(transaction) = rx.recv().await {
             println!("Engine process_txn {:?}", transaction);
@@ -33,6 +37,7 @@ where S: 'static+Send+Clone{
                 continue;
             }
 
+            println!("Engine add_transaction {:?}", transaction);
             let transaction_result: Result<(), Error> = async {
                 let mut account = self.store.get_account(transaction.client_id).await?;
                 if account.locked {

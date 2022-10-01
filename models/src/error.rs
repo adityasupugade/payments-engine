@@ -33,6 +33,12 @@ impl From<tokio::sync::mpsc::error::SendError<Transaction>> for Error {
     }
 }
 
+impl From<csv_async::Error> for Error {
+    fn from(_err: csv_async::Error) -> Error {
+        Error::new(ErrorKind::Unknown("Unable to write to ObjectBMap channel".to_string()))
+    }
+}
+
 pub enum ErrorKind {
     IO(std::io::Error),
     TokioSenderError(String),

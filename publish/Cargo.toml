@@ -10,3 +10,4 @@ models = { path = "../models" }
 mem-store = { path = "../mem-store" }
 engine = { path = "../engine" }
 tokio = { version = "1.10.0", features = ["full"] }
+futures = "0.3"

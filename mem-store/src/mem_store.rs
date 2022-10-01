@@ -1,5 +1,5 @@
 use models::{transactions::{Transaction, TransactionKind}, account::Account, error::{Error, ErrorKind}, store::Store};
-use std::{collections::HashMap, sync::Arc};
+use std::{collections::HashMap, sync::Arc, pin::Pin};
 
 use async_trait::async_trait;
 use tokio::sync::RwLock;
@@ -31,9 +31,10 @@ impl Store for MemStore {
 
             match result.entry(transaction.id) {
                 std::collections::hash_map::Entry::Occupied(_) => Err(Error::new(ErrorKind::Unknown("a".to_string()))),
-                std::collections::hash_map::Entry::Vacant(_) => result.insert(transaction.id, transaction).ok_or(
-                    Error::new(ErrorKind::Unknown("a".to_string()))
-                ),
+                std::collections::hash_map::Entry::Vacant(_) => {
+                    result.insert(transaction.id, transaction.clone());
+                    Ok(transaction)
+                }
             }
         } else {
             Ok(transaction)
@@ -81,7 +82,9 @@ impl Store for MemStore {
 
         let a = result.get(&id);
         match a {
-            Some(a) => return Ok(a.clone()),
+            Some(a) => {
+                println!("fn get_account {:?}", a);
+                return Ok(a.clone())},
             None => return Ok(Account::new(id)),
         }
     }
@@ -94,11 +97,27 @@ impl Store for MemStore {
         //         return Err(StoreError::AccessError("Test Error".to_string()));
         //     }
         // }
+        println!("fn update_account");
         let mut result = self
             .accounts
             .write().await;
 
         result.insert(account.client, account.clone());
         Ok(())
+    }
+
+    async fn get_all_accounts(&self) -> Result<Pin<Box<dyn futures::Stream<Item = Account> + Send>>, Error> {
+        let result = self
+            .accounts
+            .read().await;
+
+        println!("{:?}", result);
+        for a in result.iter() {
+            println!("{:?}", a);
+        }
+        let a = Box::pin(futures::stream::iter(
+                result.values().cloned().collect::<Vec<_>>()));
+                
+        Ok(a)
     }
 }

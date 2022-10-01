@@ -115,6 +115,7 @@ dependencies = [
 name = "engine"
 version = "0.1.0"
 dependencies = [
+ "futures",
  "mem-store",
  "models",
  "tokio",
@@ -290,6 +291,8 @@ name = "models"
 version = "0.1.0"
 dependencies = [
  "async-trait",
+ "csv-async",
+ "futures",
  "serde",
  "tokio",
 ]
@@ -379,6 +382,7 @@ name = "publish"
 version = "0.1.0"
 dependencies = [
  "engine",
+ "futures",
  "mem-store",
  "models",
  "tokio",
