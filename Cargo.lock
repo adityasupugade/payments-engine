@@ -9,6 +9,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "98161a4e3e2184da77bb14f02184cdd111e83bbbcc9979dfee3c44b9a85f5602"
 
 [[package]]
+name = "async-trait"
+version = "0.1.57"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "76464446b8bc32758d7e88ee1a804d9914cd9b1cb264c029899680b0be29826f"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "autocfg"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -48,11 +59,11 @@ checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 name = "cli"
 version = "0.1.0"
 dependencies = [
- "core",
  "csv",
  "csv-async",
  "futures",
  "mem-store",
+ "models",
  "publish",
  "serde",
  "tokio",
@@ -60,21 +71,13 @@ dependencies = [
 ]
 
 [[package]]
-name = "core"
-version = "0.1.0"
-dependencies = [
- "serde",
- "tokio",
-]
-
-[[package]]
 name = "csv"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "core",
  "csv-async",
  "futures",
+ "models",
  "serde",
  "tokio",
  "tokio-stream",
@@ -112,8 +115,8 @@ dependencies = [
 name = "engine"
 version = "0.1.0"
 dependencies = [
- "core",
  "mem-store",
+ "models",
  "tokio",
  "tracing",
  "tracing-futures",
@@ -258,7 +261,9 @@ dependencies = [
 name = "mem-store"
 version = "0.1.0"
 dependencies = [
- "core",
+ "async-trait",
+ "futures",
+ "models",
  "tokio",
 ]
 
@@ -278,6 +283,15 @@ dependencies = [
  "log",
  "wasi",
  "windows-sys",
+]
+
+[[package]]
+name = "models"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "serde",
+ "tokio",
 ]
 
 [[package]]
@@ -364,9 +378,9 @@ dependencies = [
 name = "publish"
 version = "0.1.0"
 dependencies = [
- "core",
  "engine",
  "mem-store",
+ "models",
  "tokio",
 ]
 

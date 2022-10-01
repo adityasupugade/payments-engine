@@ -1,6 +1,7 @@
-use core::{transactions::{Transaction, TransactionKind}, account::Account, error::{Error, ErrorKind}};
+use models::{transactions::{Transaction, TransactionKind}, account::Account, error::{Error, ErrorKind}, store::Store};
 use std::{collections::HashMap, sync::Arc};
 
+use async_trait::async_trait;
 use tokio::sync::RwLock;
 
 #[derive(Debug, Clone)]
@@ -18,8 +19,10 @@ impl Default for MemStore {
     }
 }
 
-impl MemStore {
-    pub async fn add_transaction(&self, transaction: Transaction) -> Result<Transaction, Error> {
+
+#[async_trait]
+impl Store for MemStore {
+    async fn add_transaction(&self, transaction: Transaction) -> Result<Transaction, Error> {
         // tracing::debug!("Creating transaction: {:?}", transaction);
         if let TransactionKind::Deposit = transaction.kind {
             let mut result = self
@@ -28,14 +31,16 @@ impl MemStore {
 
             match result.entry(transaction.id) {
                 std::collections::hash_map::Entry::Occupied(_) => Err(Error::new(ErrorKind::Unknown("a".to_string()))),
-                std::collections::hash_map::Entry::Vacant(_) => Ok(result.insert(transaction.id, transaction).unwrap()),
+                std::collections::hash_map::Entry::Vacant(_) => result.insert(transaction.id, transaction).ok_or(
+                    Error::new(ErrorKind::Unknown("a".to_string()))
+                ),
             }
         } else {
             Ok(transaction)
         }
     }
 
-    pub async fn get_transaction(&self, id: u32) -> Result<Transaction, Error> {
+    async fn get_transaction(&self, id: u32) -> Result<Transaction, Error> {
         // tracing::debug!("Getting transaction {}", id);
         let result = self
             .transactions
@@ -48,7 +53,7 @@ impl MemStore {
         a
     }
 
-    pub async fn delete_transaction(&self, id: u32) -> Result<(), Error> {
+    async fn delete_transaction(&self, id: u32) -> Result<(), Error> {
         // tracing::debug!("Deleting transaction: {:?}", id);
         let mut result = self.transactions
             .write().await;
@@ -57,7 +62,7 @@ impl MemStore {
         Ok(())
     }
 
-    pub async fn set_transaction_under_dispute(&self, id: u32, under_dispute: bool) -> Result<(), Error> {
+    async fn set_transaction_under_dispute(&self, id: u32, under_dispute: bool) -> Result<(), Error> {
         // tracing::debug!("Setting transaction {} under dispute to {}", id, under_dispute);
         let mut result = self.transactions
             .write().await;
@@ -68,7 +73,7 @@ impl MemStore {
         Ok(())
     }
 
-    pub async fn get_account(&self, id: u16) -> Result<Account, Error> {
+    async fn get_account(&self, id: u16) -> Result<Account, Error> {
         // tracing::debug!("Getting account: {}", id);
         let result = self
             .accounts
@@ -81,7 +86,7 @@ impl MemStore {
         }
     }
 
-    pub async fn update_account(&self, account: &Account) -> Result<(), Error> {
+    async fn update_account(&self, account: &Account) -> Result<(), Error> {
         // tracing::debug!("Upserting account: {:?}", account);
         // #[cfg(any(test, feature = "testing"))]
         // {

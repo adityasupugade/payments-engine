@@ -5,6 +5,6 @@ members = [
     "csv",
     "engine",
     "mem-store",
-    "core",
+    "models",
     "publish"
 ]

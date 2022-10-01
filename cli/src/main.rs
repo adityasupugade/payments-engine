@@ -2,7 +2,7 @@ mod process;
 
 use std::{env, path::PathBuf, sync::Arc};
 use mem_store::mem_store::MemStore;
-use core::error::Error;
+use models::error::Error;
 use tokio::{fs::File, runtime::Runtime};
 use crate::process::process_transactions;
 
@@ -10,7 +10,7 @@ fn main() -> Result<(), Error> {
     let args: Vec<String> = env::args().collect();
     println!("{:?}", args);
     
-    let rt = core::infra::init_runtime(2, 1)?;
+    let rt = models::infra::init_runtime(2, 1)?;
     let rtc = rt.clone();
     let p = PathBuf::from("/home/aditya/transactions.csv");
     rt.block_on(init(p, rtc))?;

@@ -1,4 +1,4 @@
-use core::{transactions::Transaction, error::{Error, ErrorKind}};
+use models::{transactions::Transaction, error::{Error, ErrorKind}};
 use std::{collections::HashMap, sync::{Arc, Mutex}};
 
 use engine::engine::Engine;
@@ -27,7 +27,7 @@ impl Publisher {
             None => {
                 let (tx, rx) = tokio::sync::mpsc::channel(10);
                 let worker = Engine::new(self.mem_store.clone()).start(self.rt.clone(), rx).await;
-                tx.send(transaction.clone()).await;
+                tx.send(transaction.clone()).await?;
                 self.workers.lock().expect("").push(worker);
                 self.map.insert(transaction.client_id % self.worker_count, tx);
                 

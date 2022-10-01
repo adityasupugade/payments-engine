@@ -1,4 +1,4 @@
-use core::error::Error;
+use models::error::Error;
 use std::sync::Arc;
 
 use mem_store::mem_store::MemStore;
@@ -17,6 +17,6 @@ pub async fn process_transactions(reader: &mut Reader, store: MemStore, rt: Arc<
         a.post_txn(t.unwrap()).await?;
     }
     a.shutdown_gracefully().await;
-
+    // print!("{:?}", store);
     Ok(())
 }

@@ -21,7 +21,7 @@ pub struct Transaction {
     pub id: u32,
     #[serde(default)]
     pub amount: Option<f32>,
-    #[serde(skip_serializing)]
+    #[serde(skip)]
     pub under_dispute: bool,
 }
 

@@ -1,17 +1,17 @@
-use core::{transactions::{Transaction, TransactionKind}, error::{Error, ErrorKind}, account::Account};
+use models::{transactions::{Transaction, TransactionKind}, error::{Error, ErrorKind}, account::Account, store::Store};
 use std::sync::Arc;
 
-use mem_store::mem_store::MemStore;
 use tokio::{runtime::Runtime, sync::mpsc::Receiver};
 
 #[derive(Clone)]
 
-pub struct Engine {
-    store: MemStore,
+pub struct Engine<S: Store> {
+    store: S,
 }
 
-impl Engine {
-    pub fn new(store: MemStore) -> Self {
+impl <S: Store> Engine<S> 
+where S: 'static+Send+Clone{
+    pub fn new(store: S) -> Self {
         Engine{store}
     }
 
@@ -22,7 +22,7 @@ impl Engine {
 
     async fn process_txn(&self, mut rx : Receiver<Transaction>) -> Result<(), Error> {
         while let Some(transaction) = rx.recv().await {
-            print!("{:?}", transaction);
+            println!("Engine process_txn {:?}", transaction);
             if !transaction.is_valid_amount() {
                 tracing::error!("Transaction with id {} has negative amount",transaction.id);
                 continue;

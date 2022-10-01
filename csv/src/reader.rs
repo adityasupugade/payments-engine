@@ -1,4 +1,4 @@
-use core::transactions::Transaction;
+use models::transactions::Transaction;
 use tokio_stream::StreamExt;
 
 pub type Reader = dyn tokio::io::AsyncRead + Send + Sync + Unpin;
