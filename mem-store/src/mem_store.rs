@@ -30,7 +30,9 @@ impl Store for MemStore {
                 .write().await;
 
             match result.entry(transaction.id) {
-                std::collections::hash_map::Entry::Occupied(_) => Err(Error::new(ErrorKind::Unknown("a".to_string()))),
+                std::collections::hash_map::Entry::Occupied(_) => {
+                    Err(Error::new(ErrorKind::StoreError("Transaction with transaction id exists.".to_string())))
+                },
                 std::collections::hash_map::Entry::Vacant(_) => {
                     result.insert(transaction.id, transaction.clone());
                     Ok(transaction)
@@ -49,7 +51,7 @@ impl Store for MemStore {
 
         let a = match result.get(&id) {
             Some(t) => Ok(t.clone()),
-            None => Err(Error::new(ErrorKind::Unknown("a".to_string()))),
+            None => Err(Error::new(ErrorKind::StoreError("Transaction with transaction Id does not exist.".to_string()))),
         };
         a
     }
@@ -83,8 +85,8 @@ impl Store for MemStore {
         let a = result.get(&id);
         match a {
             Some(a) => {
-                println!("fn get_account {:?}", a);
-                return Ok(a.clone())},
+                return Ok(a.clone())
+            },
             None => return Ok(Account::new(id)),
         }
     }
@@ -97,7 +99,6 @@ impl Store for MemStore {
         //         return Err(StoreError::AccessError("Test Error".to_string()));
         //     }
         // }
-        println!("fn update_account");
         let mut result = self
             .accounts
             .write().await;
@@ -111,10 +112,9 @@ impl Store for MemStore {
             .accounts
             .read().await;
 
-        println!("{:?}", result);
-        for a in result.iter() {
-            println!("{:?}", a);
-        }
+        // for a in result.iter() {
+        //     println!("{:?}", a);
+        // }
         let a = Box::pin(futures::stream::iter(
                 result.values().cloned().collect::<Vec<_>>()));
                 

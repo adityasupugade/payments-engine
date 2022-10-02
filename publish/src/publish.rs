@@ -39,22 +39,12 @@ impl Publisher {
     pub async fn shutdown_gracefully(&mut self) -> Vec<Result<(), Error>> {
         self.map.clear();
         let mut results = Vec::new();
-        for worker in self
-            .workers
-            .lock()
-            .expect("Ignore lock poisoning")
+        for worker in self.workers.lock().expect("Ignore lock poisoning")
             .iter_mut()
         {
-            match worker.await {
-                Ok(result) => {
-                    // println!("{:?}", result);
-                    results.push(Ok(()))
-                },
-                Err(join_error) => {
-                    println!("{:?}", join_error);
-                    // Err(Error::new(ErrorKind::Unknown("error".to_string())));
-                },
-            }
+            results.push(worker.await.map_err(|e|
+                Error::new(ErrorKind::JoinError(e))
+            ));
         }
         return results;
     }

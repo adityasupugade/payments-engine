@@ -26,6 +26,15 @@ pub struct Transaction {
 }
 
 impl Transaction {
+    pub const fn new(kind: TransactionKind, client_id: u16, id: u32, amount: Option<f32>) -> Self {
+        Self {  kind,
+                client_id,
+                id,
+                amount,
+                under_dispute: false
+             }
+    }
+
     pub fn is_valid_amount(&self) -> bool {
         match self.amount {
             Some(a) => {

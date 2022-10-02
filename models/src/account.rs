@@ -20,6 +20,16 @@ impl Account {
         }
     }
 
+    pub fn load(client: u16, available: f32, held: f32, locked: bool) -> Self {
+        Self {
+            client,
+            available,
+            held,
+            total: available + held,
+            locked,
+        }
+    }
+
     pub fn to_max_display_precision(&mut self) {
         self.available = truncate(&self.available);
         self.held = truncate(&self.held);

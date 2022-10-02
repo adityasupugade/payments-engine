@@ -12,7 +12,7 @@ fn main() -> Result<(), Error> {
     
     let rt = models::infra::init_runtime(2, 1)?;
     let rtc = rt.clone();
-    let p = PathBuf::from("/home/aditya/transactions.csv");
+    let p = PathBuf::from("/home/aditya_supugade/Homework/transactions.csv");
     rt.block_on(init(p, rtc))?;
     Ok(())
 }
