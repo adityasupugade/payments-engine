@@ -26,18 +26,17 @@ where S: 'static+Send+Clone{
 
     async fn process_txn(&self, mut rx : Receiver<Transaction>) -> Result<(), Error> {
         while let Some(transaction) = rx.recv().await {
-            println!("Engine process_txn {:?}", transaction);
+            tracing::info!("Payment engine processing transaction with id {}", transaction.id);
             if !transaction.is_valid_amount() {
-                tracing::error!("Transaction with id {} has negative amount",transaction.id);
+                tracing::error!("Transaction with id {} has negative amount", transaction.id);
                 continue;
             }
 
             if let Err(_) = self.store.add_transaction(transaction.clone()).await {
-                tracing::error!("Failed to add transaction with id {}.",transaction.id);
+                tracing::error!("Failed to add transaction with id {}",transaction.id);
                 continue;
             }
 
-            println!("Engine add_transaction {:?}", transaction);
             let transaction_result: Result<(), Error> = async {
                 let mut account = self.store.get_account(transaction.client_id).await?;
 
@@ -60,20 +59,20 @@ where S: 'static+Send+Clone{
                         TransactionKind::Deposit | TransactionKind::Withdrawal => {
                             // tracing::warn!("Rolling back transaction for tx {}", transaction.id);
                             if let Err(_) = self.store.delete_transaction(transaction.id).await {
-                                tracing::error!("CRITICAL: Failed to rollback transaction: {}", transaction.id);
+                                tracing::error!("Failed to rollback transaction: {}", transaction.id);
                                 // return Err(Error::new(ErrorKind::Unknown("abc".to_string())));
                             }
 
                         },
                         TransactionKind::Dispute => {
                             if let Err(_) = self.store.set_transaction_under_dispute(transaction.id, false).await {
-                                tracing::error!("CRITICAL: Failed to rollback transaction: {}", transaction.id);
+                                tracing::error!("Failed to rollback transaction: {}", transaction.id);
                                 // return Err(Error::new(ErrorKind::Unknown("abc".to_string())));
                             }
                         },
                         TransactionKind::Resolve | TransactionKind::ChargeBack => {
                             if let Err(_) = self.store.set_transaction_under_dispute(transaction.id, true).await {
-                                tracing::error!("CRITICAL: Failed to rollback transaction: {}", transaction.id);
+                                tracing::error!("Failed to rollback transaction: {}", transaction.id);
                                 // return Err(Error::new(ErrorKind::Unknown("abc".to_string())));
                             }
                         },
@@ -111,13 +110,12 @@ where S: 'static+Send+Clone{
     }
 
     async fn dispute(&self, account: &mut Account, info: &Transaction) -> Result<(), Error> {
-        // if no ref, ignore
         let ref_transaction: Result<Transaction, Error> = self.store.get_transaction(info.id).await;
         match ref_transaction {
             Err(e) => {
                 match &*e.kind {
                     ErrorKind::StoreError(_) => {
-                        // tracing::info!("Ignoring dispute for transaction {}. No ref found", id);
+                        tracing::info!("Ignoring dispute no reference found for transaction {}", info.id);
                         return Ok(())
                     },
                     _ => return Err(e),
@@ -149,13 +147,12 @@ where S: 'static+Send+Clone{
     }
 
     async fn resolve(&self, account: &mut Account, info: &Transaction) -> Result<(), Error> {
-        // if no ref, ignore
         let ref_transaction: Result<Transaction, Error> = self.store.get_transaction(info.id).await;
         match ref_transaction {
             Err(e) => {
                 match *e.kind {
                     ErrorKind::StoreError(_) => {
-                    //     tracing::info!("Ignoring resolve for transaction {}. No ref found", id);
+                        tracing::info!("Ignoring resolve no reference found for transaction {}", info.id);
                         Ok(())
                     },
                     _ => return Err(e),
@@ -187,13 +184,12 @@ where S: 'static+Send+Clone{
     }
 
     async fn chargeback(&self, account: &mut Account, info: &Transaction) -> Result<(), Error> {
-        // if no ref, ignore
         let ref_transaction: Result<Transaction, Error> = self.store.get_transaction(info.id).await;
         match ref_transaction {
             Err(e) => {
                 match *e.kind {
                     ErrorKind::StoreError(_) => {
-                    //     tracing::info!("Ignoring chargeback for transaction {}. No ref found", id);
+                        tracing::info!("Ignoring chargeback no reference found for transaction {}", info.id);
                         Ok(())
                     },
                     _ => return Err(e),

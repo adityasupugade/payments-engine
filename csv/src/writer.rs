@@ -1,6 +1,5 @@
 use futures::StreamExt;
 use models::{account::Account, error::Error};
-use tracing::instrument;
 
 pub type Writer = dyn tokio::io::AsyncWrite + Send + Sync + Unpin;
 
@@ -9,7 +8,6 @@ pub async fn write_csv(writer: &mut Writer, mut account_stream: impl futures::St
 
     while let Some(mut account) = account_stream.next().await {
         account.to_max_display_precision();
-        println!("{:?}", account);
         writer.serialize(account).await?;
     }
 

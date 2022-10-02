@@ -23,7 +23,7 @@ impl Default for MemStore {
 #[async_trait]
 impl Store for MemStore {
     async fn add_transaction(&self, transaction: Transaction) -> Result<Transaction, Error> {
-        // tracing::debug!("Creating transaction: {:?}", transaction);
+        tracing::debug!("Creating transaction: {:?}", transaction);
         if let TransactionKind::Deposit = transaction.kind {
             let mut result = self
                 .transactions
@@ -44,7 +44,7 @@ impl Store for MemStore {
     }
 
     async fn get_transaction(&self, id: u32) -> Result<Transaction, Error> {
-        // tracing::debug!("Getting transaction {}", id);
+        tracing::debug!("Getting transaction {}", id);
         let result = self
             .transactions
             .read().await;
@@ -57,7 +57,7 @@ impl Store for MemStore {
     }
 
     async fn delete_transaction(&self, id: u32) -> Result<(), Error> {
-        // tracing::debug!("Deleting transaction: {:?}", id);
+        tracing::debug!("Deleting transaction: {:?}", id);
         let mut result = self.transactions
             .write().await;
 
@@ -66,7 +66,7 @@ impl Store for MemStore {
     }
 
     async fn set_transaction_under_dispute(&self, id: u32, under_dispute: bool) -> Result<(), Error> {
-        // tracing::debug!("Setting transaction {} under dispute to {}", id, under_dispute);
+        tracing::debug!("Setting transaction with id {} under dispute to {}", id, under_dispute);
         let mut result = self.transactions
             .write().await;
 
@@ -77,7 +77,7 @@ impl Store for MemStore {
     }
 
     async fn get_account(&self, id: u16) -> Result<Account, Error> {
-        // tracing::debug!("Getting account: {}", id);
+        tracing::debug!("Getting account: {}", id);
         let result = self
             .accounts
             .read().await;
@@ -92,7 +92,7 @@ impl Store for MemStore {
     }
 
     async fn update_account(&self, account: &Account) -> Result<(), Error> {
-        // tracing::debug!("Upserting account: {:?}", account);
+        tracing::debug!("Updating account: {:?}", account);
         // #[cfg(any(test, feature = "testing"))]
         // {
         //     if self.enable_upsert_account_failure() {
@@ -108,16 +108,11 @@ impl Store for MemStore {
     }
 
     async fn get_all_accounts(&self) -> Result<Pin<Box<dyn futures::Stream<Item = Account> + Send>>, Error> {
+        tracing::debug!("getting all accounts");
         let result = self
             .accounts
             .read().await;
 
-        // for a in result.iter() {
-        //     println!("{:?}", a);
-        // }
-        let a = Box::pin(futures::stream::iter(
-                result.values().cloned().collect::<Vec<_>>()));
-                
-        Ok(a)
+        Ok(Box::pin(futures::stream::iter(result.values().cloned().collect::<Vec<_>>())))
     }
 }
