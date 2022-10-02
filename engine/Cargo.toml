@@ -10,5 +10,7 @@ models = { path = "../models" }
 mem-store = { path = "../mem-store" }
 tokio = { version = "1.10.0", features = ["full"] }
 tracing = "0.1.25"
-tracing-futures = "0.2.5"
 futures = "0.3"
+
+[dev-dependencies]
+tracing-test = { version = "0.2.3", features = ["no-env-filter"] }

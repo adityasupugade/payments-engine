@@ -1,7 +1,7 @@
-use models::{transactions::{Transaction, TransactionKind}, error::{Error, ErrorKind}, account::Account, store::Store};
+use models::{transactions::{Transaction, TransactionKind}, error::{Error, ErrorKind}, account::Account, store::Store, infra::SpannedRuntime};
 use std::{sync::Arc, pin::Pin};
 
-use tokio::{runtime::Runtime, sync::mpsc::Receiver};
+use tokio::sync::mpsc::Receiver;
 
 #[derive(Clone)]
 
@@ -15,7 +15,7 @@ where S: 'static+Send+Clone{
         Engine{store}
     }
 
-    pub async fn start(&self, rt: Arc<Runtime>, rx : Receiver<Transaction>) -> tokio::task::JoinHandle<()> {
+    pub async fn start(&self, rt: Arc<SpannedRuntime>, rx : Receiver<Transaction>) -> tokio::task::JoinHandle<()> {
         let e = self.clone();
         rt.spawn(async move { let _ = Engine::process_txn(&e, rx).await; })
     }
@@ -232,30 +232,111 @@ mod tests {
     use std::sync::Arc;
 
     use mem_store::mem_store::MemStore;
-    use models::{account::Account, store::Store, transactions::{Transaction, TransactionKind}};
-    use tokio::runtime::Runtime;
+    use models::{account::Account, store::Store, transactions::{Transaction, TransactionKind}, logger::create_span, infra::SpannedRuntime};
 
+    use tracing_test::traced_test;
     use super::Engine;
 
     #[test]
+    fn test_deposit() {
+        let span = create_span();
+        let rt = Arc::new(models::infra::get_runtime(1, 1, span).unwrap());
+        let rtc = rt.clone();
+        let account = Account::new(1);
+        let store = MemStore::default();
+        rt.block_on(run_deposit_test(account, store, rtc))
+    }
+
+    async fn run_deposit_test(account: Account, store: MemStore, rt: Arc<SpannedRuntime>) {
+        store.update_account(&account).await.unwrap();
+        let (tx, rx) = tokio::sync::mpsc::channel(10);
+        let worker = Engine::new(store.clone()).start(rt.clone(), rx).await;
+        tx.send(Transaction::new(TransactionKind::Deposit, 1, 1, Some(10.0))).await.unwrap();
+
+        drop(tx);
+        worker.await.unwrap();
+
+        let account = store.get_account(account.client).await.unwrap();
+        assert_eq!(account.available, 10.0);
+        assert_eq!(account.held, 0.0);
+        assert_eq!(account.total, 10.0);
+    }
+
+    #[test]
+    fn test_withdrawal() {
+        let span = create_span();
+        let rt = Arc::new(models::infra::get_runtime(1, 1, span).unwrap());
+        let rtc = rt.clone();
+        let account = Account::load(1, 10.0, 0.0, false);
+        let store = MemStore::default();
+        rt.block_on(run_withdrawal_test(account, store, rtc))
+    }
+
+    async fn run_withdrawal_test(account: Account, store: MemStore, rt: Arc<SpannedRuntime>) {
+        store.update_account(&account).await.unwrap();
+        let (tx, rx) = tokio::sync::mpsc::channel(10);
+        let worker = Engine::new(store.clone()).start(rt.clone(), rx).await;
+        tx.send(Transaction::new(TransactionKind::Withdrawal, 1, 1, Some(5.0))).await.unwrap();
+
+        drop(tx);
+        worker.await.unwrap();
+
+        let account = store.get_account(account.client).await.unwrap();
+        assert_eq!(account.available, 5.0);
+        assert_eq!(account.held, 0.0);
+        assert_eq!(account.total, 5.0);
+    }
+
+    #[traced_test]
+    #[test]
+    fn test_withdrawal_insufficient_funds() {
+        let rt = Arc::new(models::infra::get_runtime(1, 1, create_span()).unwrap());
+        let rtc = rt.clone();
+        let account = Account::load(1, 5.0, 0.0, false);
+        let store = MemStore::default();
+        rt.block_on(run_withdrawal_insufficient_funds_test(account, store, rtc));
+        assert!(logs_contain(format!("Insufficient available funds").as_str()));
+    }
+
+    async fn run_withdrawal_insufficient_funds_test(account: Account, store: MemStore, rt: Arc<SpannedRuntime>) {
+        store.update_account(&account).await.unwrap();
+        let (tx, rx) = tokio::sync::mpsc::channel(10);
+        let worker = Engine::new(store.clone()).start(rt.clone(), rx).await;
+        tx.send(Transaction::new(TransactionKind::Withdrawal, 1, 1, Some(10.0))).await.unwrap();
+
+        drop(tx);
+        worker.await.unwrap();
+
+        let account = store.get_account(account.client).await.unwrap();
+        assert_eq!(account.available, 5.0);
+        assert_eq!(account.held, 0.0);
+        assert_eq!(account.total, 5.0);
+    }
+
+    #[test]
     fn test_locked_account() {
-        let rt = models::infra::init_runtime(2, 1).unwrap();
+        let span = create_span();
+        let rt = Arc::new(models::infra::get_runtime(1, 1, span).unwrap());
         let rtc = rt.clone();
         let account = Account::load(1, 10.0, 0.0, true);
         let store = MemStore::default();
         rt.block_on(run_locked_account_test(account, store, rtc))
     }
 
-    async fn run_locked_account_test(account: Account, store: MemStore, rt: Arc<Runtime>) {
+    async fn run_locked_account_test(account: Account, store: MemStore, rt: Arc<SpannedRuntime>) {
         store.update_account(&account).await.unwrap();
         let (tx, rx) = tokio::sync::mpsc::channel(10);
-        let worker = Engine::new(store).start(rt.clone(), rx).await;
+        let worker = Engine::new(store.clone()).start(rt.clone(), rx).await;
+
         tx.send(Transaction::new(TransactionKind::Deposit, 1, 2, Some(10.0))).await.unwrap();
         tx.send(Transaction::new(TransactionKind::Withdrawal, 1, 3, Some(10.0))).await.unwrap();
         tx.send(Transaction::new(TransactionKind::Resolve, 1, 1, None)).await.unwrap();
         tx.send(Transaction::new(TransactionKind::ChargeBack, 1, 1, None)).await.unwrap();
+
         drop(tx);
         worker.await.unwrap();
+
+        let account = store.get_account(account.client).await.unwrap();
         assert_eq!(account.available, 10.0);
         assert_eq!(account.held, 0.0);
         assert_eq!(account.total, 10.0);

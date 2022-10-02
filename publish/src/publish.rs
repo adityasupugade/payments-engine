@@ -1,20 +1,20 @@
-use models::{transactions::Transaction, error::{Error, ErrorKind}, account::Account};
+use models::{transactions::Transaction, error::{Error, ErrorKind}, account::Account, infra::SpannedRuntime};
 use std::{collections::HashMap, sync::{Arc, Mutex}, pin::Pin};
 
 use engine::engine::Engine;
 use mem_store::mem_store::MemStore;
-use tokio::{sync::mpsc::Sender, runtime::Runtime, task::JoinHandle};
+use tokio::{sync::mpsc::Sender, task::JoinHandle};
 
 pub struct Publisher {
     map: HashMap<u16, Sender<Transaction>>,
     mem_store: MemStore,
-    rt: Arc<Runtime>,
+    rt: Arc<SpannedRuntime>,
     worker_count: u16,
     pub workers: Arc<Mutex<Vec<JoinHandle<()>>>>,
 }
 
 impl Publisher {
-    pub fn new(mem_store: MemStore, rt: Arc<Runtime>, worker_count: u16) -> Self {
+    pub fn new(mem_store: MemStore, rt: Arc<SpannedRuntime>, worker_count: u16) -> Self {
         Self{map: HashMap::new(), mem_store, rt, worker_count, workers: Arc::new(Mutex::new(Vec::new()))}
     }
 

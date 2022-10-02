@@ -1,8 +1,18 @@
 use std::path::PathBuf;
 use std::sync::Once;
 use tracing_subscriber::fmt;
+use tracing::span::Span;
 static LOGGER: Once = Once::new();
 
+pub fn create_span() -> Span {
+    let span = tracing::span!(tracing::Level::ERROR, "pht", id=tracing::field::Empty);
+
+    if let Some(span_id) = span.id() {
+        span.record("id",&span_id.into_u64());
+    }
+
+    span
+}
 
 pub struct Logger {
     logs_dir_path: PathBuf,
