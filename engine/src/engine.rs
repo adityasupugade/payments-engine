@@ -124,7 +124,8 @@ where S: 'static+Send+Clone{
             },
             Ok(ref_tx) => {
                 if ref_tx.kind == TransactionKind::Deposit {
-                    if account.client != info.client_id {
+                    if account.client != ref_tx.client_id || ref_tx.client_id != info.client_id {
+                        tracing::error!(?account, "Wrong client_id in transaction: {}, expected: {}, got: {}", info.id, account.client, info.client_id);
                         return Err(Error::new(ErrorKind::WrongClientError(info.id, account.client, info.client_id)));
                     } else if ref_tx.under_dispute {
                         tracing::error!(?account, "Double dispute for tx {}", info.id);
@@ -161,7 +162,8 @@ where S: 'static+Send+Clone{
             },
             Ok(ref_tx) => {
                 if ref_tx.kind == TransactionKind::Deposit {
-                    if account.client != info.client_id {
+                    if account.client != ref_tx.client_id || ref_tx.client_id != info.client_id {
+                        tracing::error!(?account, "Wrong client_id in transaction: {}, expected: {}, got: {}", info.id, account.client, info.client_id);
                         return Err(Error::new(ErrorKind::WrongClientError(info.id, account.client, info.client_id)));
                     } else if account.held < ref_tx.amount.unwrap() {
                         tracing::error!(?account, "Insufficient available funds");
@@ -198,8 +200,8 @@ where S: 'static+Send+Clone{
             },
             Ok(ref_tx) => {
                 if ref_tx.kind == TransactionKind::Deposit {
-
-                    if account.client != info.client_id {
+                    if account.client != ref_tx.client_id || ref_tx.client_id != info.client_id {
+                        tracing::error!(?account, "Wrong client_id in transaction: {}, expected: {}, got: {}", info.id, account.client, info.client_id);
                         return Err(Error::new(ErrorKind::WrongClientError(info.id, account.client, info.client_id)));
                     } else if account.held < ref_tx.amount.unwrap() {
                         tracing::error!(?account, "Insufficient available funds");
@@ -341,5 +343,159 @@ mod tests {
         assert_eq!(account.held, 0.0);
         assert_eq!(account.total, 10.0);
         assert!(account.locked);
+    }
+
+    #[test]
+    fn test_dispute() {
+        let span = create_span();
+        let rt = Arc::new(models::infra::get_runtime(1, 1, span).unwrap());
+        let rtc = rt.clone();
+        let account = Account::load(1, 10.0, 0.0, false);
+        let store = MemStore::default();
+        rt.block_on(run_dispute_test(account, store, rtc))
+    }
+
+    async fn run_dispute_test(account: Account, store: MemStore, rt: Arc<SpannedRuntime>) {
+        let txn_id = 2;
+        store.add_transaction(Transaction::new(TransactionKind::Deposit, 1, txn_id, Some(10.0))).await.unwrap();
+        store.update_account(&account).await.unwrap();
+        let (tx, rx) = tokio::sync::mpsc::channel(10);
+        let worker = Engine::new(store.clone()).start(rt.clone(), rx).await;
+
+        tx.send(Transaction::new(TransactionKind::Dispute, 1, 2, None)).await.unwrap();
+
+        drop(tx);
+        worker.await.unwrap();
+
+        let transaction = store.get_transaction(txn_id).await.unwrap();
+        assert_eq!(transaction.under_dispute, true);
+
+        let account = store.get_account(account.client).await.unwrap();
+        assert_eq!(account.available, 0.0);
+        assert_eq!(account.held, 10.0);
+        assert_eq!(account.total, 10.0);
+    }
+
+    #[traced_test]
+    #[test]
+    fn test_dispute_on_wrong_transaction() {
+        let span = create_span();
+        let rt = Arc::new(models::infra::get_runtime(1, 1, span).unwrap());
+        let rtc = rt.clone();
+        let account = Account::load(1, 10.0, 0.0, false);
+        let store = MemStore::default();
+        rt.block_on(run_dispute_on_wrong_transaction_test(account, store, rtc));
+        assert!(logs_contain(format!("Ignoring dispute no reference found for transaction").as_str()));
+    }
+
+    async fn run_dispute_on_wrong_transaction_test(account: Account, store: MemStore, rt: Arc<SpannedRuntime>) {
+        store.add_transaction(Transaction::new(TransactionKind::Deposit, 1, 1, Some(10.0))).await.unwrap();
+        store.add_transaction(Transaction::new(TransactionKind::Withdrawal, 1, 2, Some(10.0))).await.unwrap();
+        store.update_account(&account).await.unwrap();
+        let (tx, rx) = tokio::sync::mpsc::channel(10);
+        let worker = Engine::new(store.clone()).start(rt.clone(), rx).await;
+
+        tx.send(Transaction::new(TransactionKind::Dispute, 1, 2, None)).await.unwrap();
+
+        drop(tx);
+        worker.await.unwrap();
+
+        let account = store.get_account(account.client).await.unwrap();
+        assert_eq!(account.available, 10.0);
+        assert_eq!(account.held, 0.0);
+        assert_eq!(account.total, 10.0);
+    }
+
+    #[traced_test]
+    #[test]
+    fn test_dispute_on_transaction_already_under_dispute() {
+        let span = create_span();
+        let rt = Arc::new(models::infra::get_runtime(1, 1, span).unwrap());
+        let rtc = rt.clone();
+        let account = Account::load(1, 10.0, 0.0, false);
+        let store = MemStore::default();
+        rt.block_on(run_dispute_on_transaction_already_under_dispute_test(account, store, rtc));
+        assert!(logs_contain(format!("Double dispute for tx").as_str()));
+    }
+
+    async fn run_dispute_on_transaction_already_under_dispute_test(account: Account, store: MemStore, rt: Arc<SpannedRuntime>) {
+        let mut txn = Transaction::new(TransactionKind::Deposit, 1, 2, Some(10.0));
+        txn.set_under_dispute(true);
+        store.add_transaction(txn).await.unwrap();
+        store.update_account(&account).await.unwrap();
+        let (tx, rx) = tokio::sync::mpsc::channel(10);
+        let worker = Engine::new(store.clone()).start(rt.clone(), rx).await;
+
+        tx.send(Transaction::new(TransactionKind::Dispute, 1, 2, None)).await.unwrap();
+
+        drop(tx);
+        worker.await.unwrap();
+
+        let account = store.get_account(account.client).await.unwrap();
+        assert_eq!(account.available, 10.0);
+        assert_eq!(account.held, 0.0);
+        assert_eq!(account.total, 10.0);
+    }
+
+    #[traced_test]
+    #[test]
+    fn test_dispute_with_insufficient_balance() {
+        let span = create_span();
+        let rt = Arc::new(models::infra::get_runtime(1, 1, span).unwrap());
+        let rtc = rt.clone();
+        let account = Account::load(1, 5.0, 0.0, false);
+        let store = MemStore::default();
+        rt.block_on(run_dispute_with_insufficient_balance_test(account, store, rtc));
+        assert!(logs_contain(format!("Insufficient available funds").as_str()));
+    }
+
+    async fn run_dispute_with_insufficient_balance_test(account: Account, store: MemStore, rt: Arc<SpannedRuntime>) {
+        store.add_transaction(Transaction::new(TransactionKind::Deposit, 1, 2, Some(10.0))).await.unwrap();
+        store.update_account(&account).await.unwrap();
+        let (tx, rx) = tokio::sync::mpsc::channel(10);
+        let worker = Engine::new(store.clone()).start(rt.clone(), rx).await;
+
+        tx.send(Transaction::new(TransactionKind::Dispute, 1, 2, None)).await.unwrap();
+
+        drop(tx);
+        worker.await.unwrap();
+
+        let account = store.get_account(account.client).await.unwrap();
+        assert_eq!(account.available, 5.0);
+        assert_eq!(account.held, 0.0);
+        assert_eq!(account.total, 5.0);
+    }
+
+    #[traced_test]
+    #[test]
+    fn test_dispute_on_wrong_clientid() {
+        let span = create_span();
+        let rt = Arc::new(models::infra::get_runtime(1, 1, span).unwrap());
+        let rtc = rt.clone();
+        let account_1 = Account::load(1, 10.0, 0.0, false);
+        let account_2 = Account::load(2, 10.0, 0.0, false);
+        let store = MemStore::default();
+        rt.block_on(run_dispute_on_wrong_clientid_test(account_1, account_2, store, rtc));
+        assert!(logs_contain(format!("Wrong client_id in transaction").as_str()));
+    }
+
+    async fn run_dispute_on_wrong_clientid_test(account_1: Account, account_2: Account, store: MemStore, rt: Arc<SpannedRuntime>) {
+        store.add_transaction(Transaction::new(TransactionKind::Deposit, 1, 1, Some(10.0))).await.unwrap();
+        store.add_transaction(Transaction::new(TransactionKind::Deposit, 2, 2, Some(10.0))).await.unwrap();
+        store.update_account(&account_1).await.unwrap();
+        store.update_account(&account_2).await.unwrap();
+        let (tx, rx) = tokio::sync::mpsc::channel(10);
+        let worker = Engine::new(store.clone()).start(rt.clone(), rx).await;
+
+        tx.send(Transaction::new(TransactionKind::Dispute, 1, 2, None)).await.unwrap();
+
+        drop(tx);
+        worker.await.unwrap();
+
+        let transaction = store.get_transaction(1).await.unwrap();
+        assert_eq!(transaction.under_dispute, false);
+
+        let transaction = store.get_transaction(2).await.unwrap();
+        assert_eq!(transaction.under_dispute, false);
     }
 }
