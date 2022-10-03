@@ -110,3 +110,107 @@ impl Store for MemStore {
         Ok(Box::pin(futures::stream::iter(result.values().cloned().collect::<Vec<_>>())))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::sync::Arc;
+
+    use models::{transactions::{TransactionKind, Transaction}, logger::create_span, store::Store, error::{ErrorKind, Error}, account::Account};
+
+    use super::MemStore;
+
+
+    #[test]
+    fn test_add_duplicate_transaction() {
+        let rt = Arc::new(models::infra::get_runtime(1, 1, create_span()).unwrap());
+        let store = MemStore::default();
+        let txn = Transaction::new(TransactionKind::Deposit, 1, 2, Some(10.0));
+        rt.block_on(run_add_duplicate_transaction_test(txn, store))
+    }
+
+    async fn run_add_duplicate_transaction_test(txn: Transaction, store: MemStore) {
+        let result = store.add_transaction(txn.clone()).await;
+        assert!(result.is_ok());
+        let result = store.add_transaction(txn.clone()).await;
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        let exp_err = Error::new(ErrorKind::StoreError("Transaction with transaction id exists.".to_string()));
+        assert_eq!(err.to_string(), exp_err.to_string());
+    }
+
+    #[test]
+    fn test_add_all_kinds_transaction() {
+        let rt = Arc::new(models::infra::get_runtime(1, 1, create_span()).unwrap());
+        let store = MemStore::default();
+        rt.block_on(run_add_all_kinds_transaction_test(store))
+    }
+
+    async fn run_add_all_kinds_transaction_test(store: MemStore) {
+        let txn1 = Transaction::new(TransactionKind::Deposit, 1, 1, Some(10.0));
+        let txn2 = Transaction::new(TransactionKind::Withdrawal, 1, 2, Some(10.0));
+        let txn3 = Transaction::new(TransactionKind::Dispute, 1, 3, None);
+        let txn4 = Transaction::new(TransactionKind::Resolve, 1, 4, None);
+        let txn5 = Transaction::new(TransactionKind::ChargeBack, 1, 5, None);
+
+        store.add_transaction(txn1.clone()).await.unwrap();
+        store.add_transaction(txn2.clone()).await.unwrap();
+        store.add_transaction(txn3.clone()).await.unwrap();
+        store.add_transaction(txn4.clone()).await.unwrap();
+        store.add_transaction(txn5.clone()).await.unwrap();
+
+        let t1 = store.get_transaction(txn1.id).await;
+        assert!(t1.is_ok());
+
+        let exp_err = Error::new(ErrorKind::StoreError("Transaction with transaction Id does not exist.".to_string()));
+
+        let t2 = store.get_transaction(txn2.id).await;
+        assert!(t2.is_err());
+        let err = t2.unwrap_err();
+        assert_eq!(err.to_string(), exp_err.to_string());
+
+        let t3 = store.get_transaction(txn3.id).await;
+        assert!(t3.is_err());
+        let err = t3.unwrap_err();
+        assert_eq!(err.to_string(), exp_err.to_string());
+
+        let t4 = store.get_transaction(txn4.id).await;
+        assert!(t4.is_err());
+        let err = t4.unwrap_err();
+        assert_eq!(err.to_string(), exp_err.to_string());
+
+        let t5 = store.get_transaction(txn5.id).await;
+        assert!(t5.is_err());
+        let err = t5.unwrap_err();
+        assert_eq!(err.to_string(), exp_err.to_string());
+    }
+
+    #[test]
+    fn test_delete_transaction() {
+        let rt = Arc::new(models::infra::get_runtime(1, 1, create_span()).unwrap());
+        let store = MemStore::default();
+        let txn = Transaction::new(TransactionKind::Deposit, 1, 2, Some(10.0));
+        rt.block_on(run_delete_transaction_test(txn, store))
+    }
+
+    async fn run_delete_transaction_test(txn: Transaction, store: MemStore) {
+        let result = store.add_transaction(txn.clone()).await;
+        assert!(result.is_ok());
+        let result = store.delete_transaction(txn.id).await;
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_account() {
+        let rt = Arc::new(models::infra::get_runtime(1, 1, create_span()).unwrap());
+        let store = MemStore::default();
+        let account = Account::load(1, 10.0, 0.0, false);
+        rt.block_on(run_account_test(account, store))
+    }
+
+    async fn run_account_test(account: Account, store: MemStore) {
+        let result = store.update_account(&account).await;
+        assert!(result.is_ok());
+        let result = store.get_account(account.client).await;
+        assert!(result.is_ok());
+    }
+}

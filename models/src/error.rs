@@ -15,6 +15,12 @@ impl Error {
     }
 }
 
+impl std::fmt::Display for Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.kind.fmt(f)
+    }
+}
+
 impl From<std::string::String> for Error {
     fn from(err: std::string::String) -> Error {
         Error::new(ErrorKind::Unknown(err))
