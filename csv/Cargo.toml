@@ -11,8 +11,9 @@ models = { path = "../models" }
 tokio = { version = "1", features = ["full"] }
 tokio-stream ={ version = "0.1", features = ["io-util"] }
 futures = "0.3"
-tracing = "0.1"
-tracing-futures = "0.2.5"
 serde = { version = "1.0.115", features = ["derive"] }
 csv-async = { version = "1.2", features = ["tokio"] }
 anyhow = "1.0"
+
+[dev-dependencies]
+mem-store = { path = "../mem-store" }
