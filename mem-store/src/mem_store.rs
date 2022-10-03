@@ -93,12 +93,6 @@ impl Store for MemStore {
 
     async fn update_account(&self, account: &Account) -> Result<(), Error> {
         tracing::debug!("Updating account: {:?}", account);
-        // #[cfg(any(test, feature = "testing"))]
-        // {
-        //     if self.enable_upsert_account_failure() {
-        //         return Err(StoreError::AccessError("Test Error".to_string()));
-        //     }
-        // }
         let mut result = self
             .accounts
             .write().await;
