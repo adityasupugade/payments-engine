@@ -101,6 +101,7 @@ dependencies = [
  "csv",
  "csv-async",
  "futures",
+ "futures-util",
  "mem-store",
  "models",
  "publish",
@@ -492,6 +493,7 @@ dependencies = [
  "mem-store",
  "models",
  "tokio",
+ "tracing",
 ]
 
 [[package]]
