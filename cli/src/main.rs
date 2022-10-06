@@ -7,8 +7,8 @@ use tokio::fs::File;
 use crate::process::process_transactions;
 
 fn main() -> Result<(), Error> {
-    let _args: Vec<String> = env::args().collect();
-
+    let args: Vec<String> = env::args().collect();
+    let input_path = &args[1];
     let log_file_dir = PathBuf::from_str("./log").unwrap();
     let filter = "debug".to_string();
     let logger = logger::Logger::new(log_file_dir, filter);
@@ -16,8 +16,8 @@ fn main() -> Result<(), Error> {
 
     let rt = Arc::new(models::infra::get_runtime(1, 1, create_span()).unwrap());
     let rtc = rt.clone();
-    let p = PathBuf::from("/home/aditya_supugade/Homework/transactions.csv");
-    rt.block_on(init(p, rtc))?;
+    let path = PathBuf::from(input_path);
+    rt.block_on(init(path, rtc))?;
     Ok(())
 }
 
